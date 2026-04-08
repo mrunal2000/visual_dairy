@@ -1,18 +1,8 @@
 import type { ReactNode } from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { fileToCompressedDataUrl } from "@/imageCompress";
 import type { EntryBlock, JournalEntry } from "@/types";
-import {
-  buildPretextForHero,
-  PretextFloatImage,
-  type EntryPretextPattern,
-} from "@/components/PretextFloatImage";
-import {
-  DraggableEntryImage,
-  EntryColumnContext,
-  type EntryColumnContextValue,
-} from "@/components/EntryDraggableImage";
-import { DocumentIcon, ImageIcon, QuoteIcon } from "@/components/Icons";
+import { DocumentIcon, ImageIcon, QuoteIcon, TrashIcon } from "@/components/Icons";
 
 type Props = {
   entries: JournalEntry[];
@@ -20,10 +10,7 @@ type Props = {
   onUpdateEntry: (
     id: string,
     patch: Partial<
-      Pick<
-        JournalEntry,
-        "dateLabel" | "title" | "description" | "blocks" | "pretextHeroBlockId"
-      >
+      Pick<JournalEntry, "dateLabel" | "title" | "description" | "blocks">
     >,
   ) => void;
 };
@@ -107,43 +94,7 @@ function EntryArticleColumn({
   onDelete: (id: string) => void;
   onUpdateEntry: Props["onUpdateEntry"];
 }) {
-  const columnRef = useRef<HTMLDivElement>(null);
   const addImageRef = useRef<HTMLInputElement>(null);
-  const [dragOffsets, setDragOffsets] = useState<
-    Record<string, { x: number; y: number }>
-  >({});
-  const [pretextHeroId, setPretextHeroIdState] = useState<string | null>(
-    () => entry.pretextHeroBlockId ?? null,
-  );
-
-  useEffect(() => {
-    setPretextHeroIdState(entry.pretextHeroBlockId ?? null);
-  }, [entry.id, entry.pretextHeroBlockId]);
-
-  const setPretextHeroId = useCallback(
-    (id: string | null) => {
-      setPretextHeroIdState(id);
-      onUpdateEntry(entry.id, { pretextHeroBlockId: id });
-    },
-    [entry.id, onUpdateEntry],
-  );
-
-  const pretext = pretextHeroId
-    ? buildPretextForHero(entry, pretextHeroId)
-    : ({ useFloat: false } satisfies EntryPretextPattern);
-
-  useEffect(() => {
-    setDragOffsets({});
-  }, [pretextHeroId]);
-
-  useEffect(() => {
-    if (
-      pretextHeroId &&
-      !entry.blocks.some((b) => b.id === pretextHeroId)
-    ) {
-      setPretextHeroId(null);
-    }
-  }, [entry.blocks, pretextHeroId, setPretextHeroId]);
 
   const onUpdateBlock = (blockId: string, body: string) => {
     onUpdateEntry(entry.id, {
@@ -157,12 +108,6 @@ function EntryArticleColumn({
     onUpdateEntry(entry.id, {
       blocks: entry.blocks.filter((b) => b.id !== blockId),
     });
-    setDragOffsets((prev) => {
-      const next = { ...prev };
-      delete next[blockId];
-      return next;
-    });
-    if (pretextHeroId === blockId) setPretextHeroId(null);
   };
 
   const onAddImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -183,29 +128,12 @@ function EntryArticleColumn({
     }
   };
 
-  const getOffset = (blockId: string) =>
-    dragOffsets[blockId] ?? { x: 0, y: 0 };
-
-  const setOffset = (blockId: string, o: { x: number; y: number }) => {
-    setDragOffsets((prev) => ({ ...prev, [blockId]: o }));
-  };
-
-  const ctx: EntryColumnContextValue = {
-    columnRef,
-    getOffset,
-    setOffset,
-  };
-
   const blockActions = editing
     ? { onUpdateBlock, onRemoveBlock }
     : undefined;
 
   return (
-    <EntryColumnContext.Provider value={ctx}>
-      <div
-        ref={columnRef}
-        className="relative flex min-w-0 flex-1 flex-col gap-4 [max-width:min(470px,100%)]"
-      >
+    <div className="relative flex min-w-0 flex-1 flex-col gap-4 [max-width:min(470px,100%)]">
         <div className="flex min-w-0 flex-col gap-1">
           {editing ? (
             <>
@@ -221,25 +149,21 @@ function EntryArticleColumn({
                 }
                 placeholder="Title"
               />
-              {(!pretext.useFloat || editing) && (
-                <>
-                  <label className="sr-only" htmlFor={`desc-${entry.id}`}>
-                    Description
-                  </label>
-                  <textarea
-                    id={`desc-${entry.id}`}
-                    className="min-h-[48px] w-full resize-y bg-transparent text-sm leading-[18px] tracking-[-0.02em] text-[#6B6B6B] outline-none placeholder:text-[#6B6B6B]"
-                    value={entry.description}
-                    onChange={(e) =>
-                      onUpdateEntry(entry.id, {
-                        description: e.target.value,
-                      })
-                    }
-                    placeholder="Description"
-                    rows={3}
-                  />
-                </>
-              )}
+              <label className="sr-only" htmlFor={`desc-${entry.id}`}>
+                Description
+              </label>
+              <textarea
+                id={`desc-${entry.id}`}
+                className="min-h-[48px] w-full resize-y bg-transparent text-sm leading-[18px] tracking-[-0.02em] text-[#6B6B6B] outline-none placeholder:text-[#6B6B6B]"
+                value={entry.description}
+                onChange={(e) =>
+                  onUpdateEntry(entry.id, {
+                    description: e.target.value,
+                  })
+                }
+                placeholder="Description"
+                rows={3}
+              />
             </>
           ) : (
             <>
@@ -248,7 +172,7 @@ function EntryArticleColumn({
                   {entry.title}
                 </h3>
               ) : null}
-              {entry.description && !pretext.useFloat ? (
+              {entry.description ? (
                 <p className="max-w-full whitespace-pre-wrap break-words text-sm leading-[18px] tracking-[-0.02em] text-[#6B6B6B]">
                   {entry.description}
                 </p>
@@ -257,28 +181,8 @@ function EntryArticleColumn({
           )}
         </div>
 
-        {editing && pretext.useFloat && blockActions ? (
-          <div className="flex flex-col gap-4">
-            {entry.blocks
-              .filter(
-                (b) => b.kind === "text" && pretext.skipBlockIds.has(b.id),
-              )
-              .map((b) => (
-                <TextBlock
-                  key={b.id}
-                  block={b}
-                  editing
-                  blockActions={blockActions}
-                />
-              ))}
-          </div>
-        ) : null}
-
         <EntryBlocks
           entry={entry}
-          pretext={pretext}
-          pretextHeroId={pretextHeroId}
-          onHeroImageFirstMove={setPretextHeroId}
           editing={editing}
           blockActions={blockActions}
         />
@@ -355,7 +259,6 @@ function EntryArticleColumn({
           </button>
         </div>
       </div>
-    </EntryColumnContext.Provider>
   );
 }
 
@@ -366,61 +269,22 @@ type BlockActions = {
 
 function EntryBlocks({
   entry,
-  pretext,
-  pretextHeroId,
-  onHeroImageFirstMove,
   editing,
   blockActions,
 }: {
   entry: JournalEntry;
-  pretext: EntryPretextPattern;
-  pretextHeroId: string | null;
-  onHeroImageFirstMove: (blockId: string) => void;
   editing: boolean;
   blockActions?: BlockActions;
 }) {
-  if (!pretext.useFloat) {
-    const nodes = walkEntryBlocks(
-      entry.blocks,
-      onHeroImageFirstMove,
-      editing,
-      blockActions,
-    );
-    if (nodes.length === 0) return null;
-    return (
-      <div className="flex min-w-0 w-full max-w-full flex-col gap-4">{nodes}</div>
-    );
-  }
-
-  const blocks = entry.blocks.filter((b) => !pretext.skipBlockIds.has(b.id));
-  const nodes = walkEntryBlocks(blocks, undefined, editing, blockActions);
-
-  const rest =
-    nodes.length > 0 ? (
-      <div className="flex min-w-0 w-full max-w-full flex-col gap-4">{nodes}</div>
-    ) : null;
-
+  const nodes = walkEntryBlocks(entry.blocks, editing, blockActions);
+  if (nodes.length === 0) return null;
   return (
-    <div className="flex min-w-0 w-full max-w-full flex-col gap-4">
-      <PretextFloatImage
-        key={`${pretextHeroId}-${pretext.imageSrc}`}
-        imageSrc={pretext.imageSrc}
-        text={pretext.text}
-        interactive
-        onRemoveHero={
-          editing && blockActions && pretextHeroId
-            ? () => blockActions.onRemoveBlock(pretextHeroId)
-            : undefined
-        }
-      />
-      {rest}
-    </div>
+    <div className="flex min-w-0 w-full max-w-full flex-col gap-4">{nodes}</div>
   );
 }
 
 function walkEntryBlocks(
   blocks: EntryBlock[],
-  onImageFirstMove?: (blockId: string) => void,
   editing = true,
   blockActions?: BlockActions,
 ): ReactNode[] {
@@ -455,7 +319,6 @@ function walkEntryBlocks(
           <ImageRow
             key={pair[0].id}
             images={pair}
-            onImageFirstMove={onImageFirstMove}
             editing={editing}
             blockActions={blockActions}
           />,
@@ -578,12 +441,10 @@ function QuoteBlock({
 
 function ImageRow({
   images,
-  onImageFirstMove,
   editing,
   blockActions,
 }: {
   images: EntryBlock[];
-  onImageFirstMove?: (blockId: string) => void;
   editing: boolean;
   blockActions?: BlockActions;
 }) {
@@ -599,20 +460,29 @@ function ImageRow({
       : "h-[161px] min-w-0 flex-1 basis-0";
 
   return (
-    <div className="flex min-w-0 w-full max-w-full items-start gap-[10px] self-stretch">
+    <div className="flex h-[161px] min-h-[161px] w-full min-w-0 max-w-full items-start gap-[10px] self-stretch">
       {images.map((img) => (
-        <DraggableEntryImage
+        <div
           key={img.id}
-          blockId={img.id}
-          src={img.body!}
-          className={tileClass}
-          onFirstMove={onImageFirstMove}
-          onRemove={
-            editing && blockActions
-              ? () => blockActions.onRemoveBlock(img.id)
-              : undefined
-          }
-        />
+          className={`relative min-w-0 overflow-hidden rounded-sm shadow-[0_0_4px_rgba(0,0,0,0.2)] ${tileClass}`}
+        >
+          <img
+            src={img.body}
+            alt=""
+            className="h-full w-full object-cover"
+          />
+          {editing && blockActions ? (
+            <button
+              type="button"
+              aria-label="Remove image"
+              title="Remove image"
+              className="absolute right-1 top-1 z-[1] flex h-[22px] w-[22px] items-center justify-center rounded-full bg-black/50 text-white shadow-sm backdrop-blur-sm transition hover:bg-black/70"
+              onClick={() => blockActions.onRemoveBlock(img.id)}
+            >
+              <TrashIcon className="text-white" />
+            </button>
+          ) : null}
+        </div>
       ))}
     </div>
   );

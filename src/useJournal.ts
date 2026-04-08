@@ -46,7 +46,6 @@ type DbRow = {
   description: string;
   blocks: JournalEntry["blocks"];
   created_at: number | string;
-  pretext_hero_block_id?: string | null;
 };
 
 function rowToEntry(row: DbRow): JournalEntry {
@@ -61,7 +60,6 @@ function rowToEntry(row: DbRow): JournalEntry {
     description: row.description,
     blocks: row.blocks,
     createdAt: Number.isFinite(created) ? created : Date.now(),
-    pretextHeroBlockId: row.pretext_hero_block_id ?? null,
   };
 }
 
@@ -74,7 +72,6 @@ function entryToRow(entry: JournalEntry, userId: string): DbRow {
     description: entry.description,
     blocks: entry.blocks,
     created_at: entry.createdAt,
-    pretext_hero_block_id: entry.pretextHeroBlockId ?? null,
   };
 }
 

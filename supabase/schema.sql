@@ -15,12 +15,11 @@ create table if not exists public.journal_entries (
   description text not null default '',
   blocks jsonb not null default '[]'::jsonb,
   created_at bigint not null,
-  pretext_hero_block_id text null,
   updated_at timestamptz not null default now()
 );
 
-alter table public.journal_entries
-  add column if not exists pretext_hero_block_id text null;
+-- Optional if migrating from an older schema:
+-- alter table public.journal_entries drop column if exists pretext_hero_block_id;
 
 create index if not exists journal_entries_user_created
   on public.journal_entries (user_id, created_at desc);

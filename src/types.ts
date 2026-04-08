@@ -13,6 +13,4 @@ export interface JournalEntry {
   description: string;
   blocks: EntryBlock[];
   createdAt: number;
-  /** When set, that image block uses @chenglou/pretext float layout (survives reload if persisted). */
-  pretextHeroBlockId?: string | null;
 }
