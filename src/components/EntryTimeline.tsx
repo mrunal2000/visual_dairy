@@ -55,13 +55,13 @@ function EntryListItem({
 
   return (
     <li className="min-w-0 w-full">
-      <article className="flex w-full min-w-0 items-start gap-[50px]">
-        <div className="w-[87px] max-w-[87px] shrink-0 text-right text-sm leading-[18px] tracking-[-0.02em] text-[#6B6B6B]">
+      <article className="flex w-full min-w-0 flex-col items-start gap-3 sm:flex-row sm:items-start sm:gap-[50px]">
+        <div className="w-full shrink-0 text-left text-sm leading-[18px] tracking-[-0.02em] text-[#6B6B6B] sm:w-[87px] sm:max-w-[87px] sm:text-right">
           {editing ? (
             <label className="block">
               <span className="sr-only">Date</span>
               <input
-                className="w-full bg-transparent text-right text-sm leading-[18px] tracking-[-0.02em] text-[#6B6B6B] outline-none placeholder:text-[#6B6B6B]"
+                className="w-full bg-transparent text-left text-sm leading-[18px] tracking-[-0.02em] text-[#6B6B6B] outline-none placeholder:text-[#6B6B6B] sm:text-right"
                 value={entry.dateLabel}
                 onChange={(e) =>
                   onUpdateEntry(entry.id, {
