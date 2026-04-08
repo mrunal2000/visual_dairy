@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { useRef, useState } from "react";
 import { fileToCompressedDataUrl } from "@/imageCompress";
 import type { EntryBlock, JournalEntry } from "@/types";
+import { LinkifiedText } from "@/components/LinkifiedText";
 import { DocumentIcon, ImageIcon, QuoteIcon, TrashIcon } from "@/components/Icons";
 
 type Props = {
@@ -173,9 +174,12 @@ function EntryArticleColumn({
                 </h3>
               ) : null}
               {entry.description ? (
-                <p className="max-w-full whitespace-pre-wrap break-words text-sm leading-[18px] tracking-[-0.02em] text-[#6B6B6B]">
-                  {entry.description}
-                </p>
+                <div
+                  role="paragraph"
+                  className="max-w-full whitespace-pre-wrap break-words text-sm leading-[18px] tracking-[-0.02em] text-[#6B6B6B]"
+                >
+                  <LinkifiedText text={entry.description} />
+                </div>
               ) : null}
             </>
           )}
