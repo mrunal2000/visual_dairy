@@ -7,6 +7,7 @@ import {
 } from "@/dateLabel";
 import type { EntryBlock, JournalEntry } from "@/types";
 import { LinkifiedText } from "@/components/LinkifiedText";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { DocumentIcon, ImageIcon, QuoteIcon, TrashIcon } from "@/components/Icons";
 
 type Props = {
@@ -110,6 +111,7 @@ function EntryArticleColumn({
   onUpdateEntry: Props["onUpdateEntry"];
 }) {
   const addImageRef = useRef<HTMLInputElement>(null);
+  const [toolbarValue, setToolbarValue] = useState("");
 
   const onUpdateBlock = (blockId: string, body: string) => {
     onUpdateEntry(entry.id, {
@@ -206,7 +208,7 @@ function EntryArticleColumn({
         />
 
         {editing ? (
-          <div className="flex items-start gap-2">
+          <div className="flex items-start">
             <input
               ref={addImageRef}
               type="file"
@@ -214,46 +216,43 @@ function EntryArticleColumn({
               className="hidden"
               onChange={onAddImage}
             />
-            <EditToolbarButton
-              label="Add quote"
-              onClick={() =>
-                onUpdateEntry(entry.id, {
-                  blocks: [
-                    ...entry.blocks,
-                    {
-                      id: crypto.randomUUID(),
-                      kind: "quote",
-                      body: "",
-                    },
-                  ],
-                })
-              }
+            <ToggleGroup
+              type="single"
+              value={toolbarValue}
+              onValueChange={(v) => {
+                if (!v) return;
+                if (v === "quote") {
+                  onUpdateEntry(entry.id, {
+                    blocks: [
+                      ...entry.blocks,
+                      { id: crypto.randomUUID(), kind: "quote", body: "" },
+                    ],
+                  });
+                }
+                if (v === "image") addImageRef.current?.click();
+                if (v === "note") {
+                  onUpdateEntry(entry.id, {
+                    blocks: [
+                      ...entry.blocks,
+                      { id: crypto.randomUUID(), kind: "text", body: "" },
+                    ],
+                  });
+                }
+                // Action buttons: reset state after performing action.
+                setToolbarValue("");
+              }}
+              aria-label="Add content"
             >
-              <QuoteIcon className="text-[#6B6B6B]" />
-            </EditToolbarButton>
-            <EditToolbarButton
-              label="Add image"
-              onClick={() => addImageRef.current?.click()}
-            >
-              <ImageIcon className="text-[#6B6B6B]" />
-            </EditToolbarButton>
-            <EditToolbarButton
-              label="Add note"
-              onClick={() =>
-                onUpdateEntry(entry.id, {
-                  blocks: [
-                    ...entry.blocks,
-                    {
-                      id: crypto.randomUUID(),
-                      kind: "text",
-                      body: "",
-                    },
-                  ],
-                })
-              }
-            >
-              <DocumentIcon className="text-[#6B6B6B]" />
-            </EditToolbarButton>
+              <ToggleGroupItem value="quote" aria-label="Add quote" title="Add quote">
+                <QuoteIcon />
+              </ToggleGroupItem>
+              <ToggleGroupItem value="image" aria-label="Add image" title="Add image">
+                <ImageIcon />
+              </ToggleGroupItem>
+              <ToggleGroupItem value="note" aria-label="Add note" title="Add note">
+                <DocumentIcon />
+              </ToggleGroupItem>
+            </ToggleGroup>
           </div>
         ) : null}
 
@@ -506,24 +505,4 @@ function ImageRow({
   );
 }
 
-function EditToolbarButton({
-  label,
-  onClick,
-  children,
-}: {
-  label: string;
-  onClick: () => void;
-  children: ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      title={label}
-      onClick={onClick}
-      className="flex h-[21px] w-[21px] shrink-0 items-center justify-center rounded-sm bg-[#F1F1F1] text-[#6B6B6B] transition hover:bg-[#e6e6e6]"
-    >
-      {children}
-    </button>
-  );
-}
+// (EditToolbarButton removed in favor of ToggleGroup)

@@ -1,8 +1,9 @@
-import { useEffect, useLayoutEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { EntryBlock, BlockKind } from "@/types";
 import { fileToCompressedDataUrl } from "@/imageCompress";
 import { formatDateLabelInput, normalizeMMDDYYYY, parseMMDDYYYY } from "@/dateLabel";
 import { Button } from "@/components/ui/button";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { DocumentIcon, ImageIcon, QuoteIcon } from "./Icons";
 
 export interface Draft {
@@ -29,6 +30,7 @@ const DESCRIPTION_MIN_PX = 32;
 export function EntryComposer({ draft, onChange, onSave, layout }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const descriptionRef = useRef<HTMLTextAreaElement>(null);
+  const [toolbarValue, setToolbarValue] = useState("");
   /** Latest draft for async image import — avoids stale closure when FileReader finishes. */
   const draftRef = useRef(draft);
   useEffect(() => {
@@ -225,17 +227,49 @@ export function EntryComposer({ draft, onChange, onSave, layout }: Props) {
                 </ul>
               )}
 
-              <div className="flex items-start gap-2">
-                <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onFile} />
-                <ToolbarButton label="Add quote" onClick={() => addKind("quote")}>
-                  <QuoteIcon className="text-[#6B6B6B]" />
-                </ToolbarButton>
-                <ToolbarButton label="Add image" onClick={onPickImage}>
-                  <ImageIcon className="text-[#6B6B6B]" />
-                </ToolbarButton>
-                <ToolbarButton label="Add note" onClick={() => addKind("text")}>
-                  <DocumentIcon className="text-[#6B6B6B]" />
-                </ToolbarButton>
+              <div className="flex items-start">
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={onFile}
+                />
+                <ToggleGroup
+                  type="single"
+                  value={toolbarValue}
+                  onValueChange={(v) => {
+                    if (!v) return;
+                    if (v === "quote") addKind("quote");
+                    if (v === "image") onPickImage();
+                    if (v === "note") addKind("text");
+                    // These are action buttons, not persistent toggles.
+                    setToolbarValue("");
+                  }}
+                  aria-label="Add content"
+                >
+                  <ToggleGroupItem
+                    value="quote"
+                    aria-label="Add quote"
+                    title="Add quote"
+                  >
+                    <QuoteIcon />
+                  </ToggleGroupItem>
+                  <ToggleGroupItem
+                    value="image"
+                    aria-label="Add image"
+                    title="Add image"
+                  >
+                    <ImageIcon />
+                  </ToggleGroupItem>
+                  <ToggleGroupItem
+                    value="note"
+                    aria-label="Add note"
+                    title="Add note"
+                  >
+                    <DocumentIcon />
+                  </ToggleGroupItem>
+                </ToggleGroup>
               </div>
 
               <div className="flex items-center gap-3 pt-1">
@@ -248,27 +282,5 @@ export function EntryComposer({ draft, onChange, onSave, layout }: Props) {
         </div>
       </div>
     </section>
-  );
-}
-
-function ToolbarButton({
-  label,
-  onClick,
-  children,
-}: {
-  label: string;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      title={label}
-      onClick={onClick}
-      className="flex h-[21px] w-[21px] shrink-0 items-center justify-center rounded-sm bg-[#F1F1F1] text-[#6B6B6B] transition hover:bg-[#e6e6e6]"
-    >
-      {children}
-    </button>
   );
 }
