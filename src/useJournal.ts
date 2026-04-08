@@ -5,13 +5,20 @@ import type { JournalEntry } from "./types";
 
 const STORAGE_KEY = "visual-dairy-entries-v1";
 
+/** Newest first (by `createdAt` timestamp when the entry was added). */
+function sortByDateAdded(entries: JournalEntry[]): JournalEntry[] {
+  return [...entries].sort(
+    (a, b) => (Number(b.createdAt) || 0) - (Number(a.createdAt) || 0),
+  );
+}
+
 function loadLocal(): JournalEntry[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw) as unknown;
     if (!Array.isArray(parsed)) return [];
-    return parsed as JournalEntry[];
+    return sortByDateAdded(parsed as JournalEntry[]);
   } catch {
     return [];
   }
@@ -39,6 +46,7 @@ type DbRow = {
   description: string;
   blocks: JournalEntry["blocks"];
   created_at: number | string;
+  pretext_hero_block_id?: string | null;
 };
 
 function rowToEntry(row: DbRow): JournalEntry {
@@ -53,6 +61,7 @@ function rowToEntry(row: DbRow): JournalEntry {
     description: row.description,
     blocks: row.blocks,
     createdAt: Number.isFinite(created) ? created : Date.now(),
+    pretextHeroBlockId: row.pretext_hero_block_id ?? null,
   };
 }
 
@@ -65,6 +74,7 @@ function entryToRow(entry: JournalEntry, userId: string): DbRow {
     description: entry.description,
     blocks: entry.blocks,
     created_at: entry.createdAt,
+    pretext_hero_block_id: entry.pretextHeroBlockId ?? null,
   };
 }
 
@@ -128,7 +138,7 @@ export function useJournal(userId: string | null) {
         );
         setEntries([]);
       } else {
-        const rows = (data as DbRow[]).map(rowToEntry);
+        const rows = sortByDateAdded((data as DbRow[]).map(rowToEntry));
         setEntries(rows);
         console.info(
           `[visual-dairy] Loaded ${rows.length} entr${rows.length === 1 ? "y" : "ies"} from Supabase`,
@@ -184,7 +194,7 @@ export function useJournal(userId: string | null) {
             JSON.stringify(processed.map((e) => e.blocks)) !==
             JSON.stringify(current.map((e) => e.blocks));
           if (changed) {
-            setEntries(processed);
+            setEntries(sortByDateAdded(processed));
           }
           const rows = processed.map((e) => entryToRow(e, userId));
           if (rows.length === 0) return;
@@ -224,7 +234,7 @@ export function useJournal(userId: string | null) {
       id: crypto.randomUUID(),
       createdAt: Date.now(),
     };
-    setEntries((prev) => [next, ...prev]);
+    setEntries((prev) => sortByDateAdded([next, ...prev]));
   }, []);
 
   const removeEntry = useCallback(
@@ -245,7 +255,9 @@ export function useJournal(userId: string | null) {
   const updateEntry = useCallback(
     (id: string, patch: Partial<JournalEntry>) => {
       setEntries((prev) =>
-        prev.map((e) => (e.id === id ? { ...e, ...patch, id: e.id } : e)),
+        sortByDateAdded(
+          prev.map((e) => (e.id === id ? { ...e, ...patch, id: e.id } : e)),
+        ),
       );
     },
     [],

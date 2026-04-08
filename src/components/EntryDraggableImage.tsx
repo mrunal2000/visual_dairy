@@ -18,13 +18,15 @@ function clamp(n: number, min: number, max: number) {
   return Math.min(Math.max(n, min), max);
 }
 
+/** Ignore sub-pixel noise when deciding if the tile was moved from its default slot. */
+const MOVED_EPS_PX = 4;
+
 type TileProps = {
   blockId: string;
   src: string;
   className: string;
   /**
-   * Plain layout only: first pointer movement past a threshold enables pretext float
-   * (no transform drag in that mode — side-by-side stays until then).
+   * Row layout: after pointer up, if this tile ended away from its default position, enables pretext for this image.
    */
   onFirstMove?: (blockId: string) => void;
   /** Icon overlay; does not change tile dimensions. */
@@ -32,8 +34,8 @@ type TileProps = {
 };
 
 /**
- * Default: offset 0 (side-by-side row). After pretext mode, dragging applies transform.
- * With `onFirstMove`, movement does not translate the tile; it only triggers the callback once.
+ * Dragging moves the tile (margin offset). With `onFirstMove`, releasing after a real move
+ * switches that image into pretext float mode; default stays side-by-side until then.
  */
 export function DraggableEntryImage({
   blockId,
@@ -59,11 +61,8 @@ export function DraggableEntryImage({
     tileW: number;
     tileH: number;
   } | null>(null);
-  const firstMoveFiredRef = useRef(false);
-
   const onPointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
     e.currentTarget.setPointerCapture(e.pointerId);
-    firstMoveFiredRef.current = false;
     const col = columnRef.current?.getBoundingClientRect();
     const tile = tileRef.current?.getBoundingClientRect();
     if (!col || !tile) return;
@@ -90,17 +89,6 @@ export function DraggableEntryImage({
     const dx = e.clientX - d.startX;
     const dy = e.clientY - d.startY;
 
-    if (onFirstMove) {
-      if (
-        !firstMoveFiredRef.current &&
-        (Math.abs(dx) > 4 || Math.abs(dy) > 4)
-      ) {
-        firstMoveFiredRef.current = true;
-        onFirstMove(blockId);
-      }
-      return;
-    }
-
     const col = columnRef.current?.getBoundingClientRect();
     if (!col) return;
 
@@ -122,7 +110,27 @@ export function DraggableEntryImage({
 
   const endDrag = (e: React.PointerEvent<HTMLButtonElement>) => {
     const d = dragRef.current;
-    if (d && e.pointerId === d.pointerId) dragRef.current = null;
+    if (d && e.pointerId === d.pointerId) {
+      const dx = e.clientX - d.startX;
+      const dy = e.clientY - d.startY;
+      const nx = d.startOff.x + dx;
+      const ny = d.startOff.y + dy;
+      const col = columnRef.current?.getBoundingClientRect();
+      if (col && onFirstMove) {
+        const visualLeft = d.naturalLeft + nx;
+        const visualTop = d.naturalTop + ny;
+        const maxX = Math.max(0, col.width - d.tileW);
+        const maxY = Math.max(0, col.height - d.tileH);
+        const clampedLeft = clamp(visualLeft, 0, maxX);
+        const clampedTop = clamp(visualTop, 0, maxY);
+        const ox = clampedLeft - d.naturalLeft;
+        const oy = clampedTop - d.naturalTop;
+        if (Math.hypot(ox, oy) > MOVED_EPS_PX) {
+          onFirstMove(blockId);
+        }
+      }
+      dragRef.current = null;
+    }
     try {
       e.currentTarget.releasePointerCapture(e.pointerId);
     } catch {
@@ -131,18 +139,20 @@ export function DraggableEntryImage({
   };
 
   return (
-    <div className={`relative min-w-0 overflow-visible ${className}`}>
+    <div
+      className={`relative min-w-0 overflow-visible ${className}`}
+      style={{ marginLeft: offset.x, marginTop: offset.y }}
+    >
       <button
         ref={tileRef}
         type="button"
         className="relative z-[1] h-full w-full touch-none overflow-hidden rounded-sm shadow-[0_0_4px_rgba(0,0,0,0.2)] active:cursor-grabbing"
         style={{
-          transform: onFirstMove ? undefined : `translate(${offset.x}px, ${offset.y}px)`,
           cursor: "grab",
         }}
         aria-label={
           onFirstMove
-            ? "Drag to wrap text around this image"
+            ? "Drag to reposition; release after moving to wrap text around this image"
             : "Drag to move image within this entry"
         }
         onPointerDown={onPointerDown}

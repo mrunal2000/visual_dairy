@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { fileToCompressedDataUrl } from "@/imageCompress";
 import type { EntryBlock, JournalEntry } from "@/types";
 import {
@@ -19,7 +19,12 @@ type Props = {
   onDelete: (id: string) => void;
   onUpdateEntry: (
     id: string,
-    patch: Partial<Pick<JournalEntry, "dateLabel" | "title" | "description" | "blocks">>,
+    patch: Partial<
+      Pick<
+        JournalEntry,
+        "dateLabel" | "title" | "description" | "blocks" | "pretextHeroBlockId"
+      >
+    >,
   ) => void;
 };
 
@@ -107,7 +112,22 @@ function EntryArticleColumn({
   const [dragOffsets, setDragOffsets] = useState<
     Record<string, { x: number; y: number }>
   >({});
-  const [pretextHeroId, setPretextHeroId] = useState<string | null>(null);
+  const [pretextHeroId, setPretextHeroIdState] = useState<string | null>(
+    () => entry.pretextHeroBlockId ?? null,
+  );
+
+  useEffect(() => {
+    setPretextHeroIdState(entry.pretextHeroBlockId ?? null);
+  }, [entry.id, entry.pretextHeroBlockId]);
+
+  const setPretextHeroId = useCallback(
+    (id: string | null) => {
+      setPretextHeroIdState(id);
+      onUpdateEntry(entry.id, { pretextHeroBlockId: id });
+    },
+    [entry.id, onUpdateEntry],
+  );
+
   const pretext = pretextHeroId
     ? buildPretextForHero(entry, pretextHeroId)
     : ({ useFloat: false } satisfies EntryPretextPattern);
@@ -123,7 +143,7 @@ function EntryArticleColumn({
     ) {
       setPretextHeroId(null);
     }
-  }, [entry.blocks, pretextHeroId]);
+  }, [entry.blocks, pretextHeroId, setPretextHeroId]);
 
   const onUpdateBlock = (blockId: string, body: string) => {
     onUpdateEntry(entry.id, {
@@ -362,7 +382,7 @@ function EntryBlocks({
   if (!pretext.useFloat) {
     const nodes = walkEntryBlocks(
       entry.blocks,
-      editing ? onHeroImageFirstMove : undefined,
+      onHeroImageFirstMove,
       editing,
       blockActions,
     );
@@ -386,7 +406,7 @@ function EntryBlocks({
         key={`${pretextHeroId}-${pretext.imageSrc}`}
         imageSrc={pretext.imageSrc}
         text={pretext.text}
-        interactive={editing}
+        interactive
         onRemoveHero={
           editing && blockActions && pretextHeroId
             ? () => blockActions.onRemoveBlock(pretextHeroId)
@@ -569,41 +589,31 @@ function ImageRow({
 }) {
   if (images.length === 0) return null;
 
-  /** Paper `visual_dairy_1`: image tiles are h-40.25 (161px); each column ~50% with gap-2.5 (10px). */
-  const single = images.length === 1;
-  const tileClass = single
-    ? "h-[161px] w-[calc(50%-5px)] shrink-0"
-    : "h-[161px] flex-1";
+  /**
+   * Paper `visual_dairy_1`: body 470px; each tile 230×161 with gap 10px (two-up fills the row).
+   * A single image uses the same tile width as one slot in a pair — not full column width.
+   */
+  const tileClass =
+    images.length === 1
+      ? "h-[161px] w-[calc(50%-5px)] shrink-0"
+      : "h-[161px] min-w-0 flex-1 basis-0";
 
   return (
     <div className="flex min-w-0 w-full max-w-full items-start gap-[10px] self-stretch">
-      {images.map((img) =>
-        editing ? (
-          <DraggableEntryImage
-            key={img.id}
-            blockId={img.id}
-            src={img.body!}
-            className={tileClass}
-            onFirstMove={onImageFirstMove}
-            onRemove={
-              blockActions
-                ? () => blockActions.onRemoveBlock(img.id)
-                : undefined
-            }
-          />
-        ) : (
-          <div
-            key={img.id}
-            className={`min-w-0 overflow-hidden rounded-sm shadow-[0_0_4px_rgba(0,0,0,0.2)] ${tileClass}`}
-          >
-            <img
-              src={img.body}
-              alt=""
-              className="h-full w-full object-cover"
-            />
-          </div>
-        ),
-      )}
+      {images.map((img) => (
+        <DraggableEntryImage
+          key={img.id}
+          blockId={img.id}
+          src={img.body!}
+          className={tileClass}
+          onFirstMove={onImageFirstMove}
+          onRemove={
+            editing && blockActions
+              ? () => blockActions.onRemoveBlock(img.id)
+              : undefined
+          }
+        />
+      ))}
     </div>
   );
 }
