@@ -1,15 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getSupabase, isSupabaseConfigured } from "@/lib/supabase";
 import { processAllEntries } from "@/lib/uploadJournalImages";
+import { parseMMDDYYYY } from "@/dateLabel";
 import type { JournalEntry } from "./types";
 
 const STORAGE_KEY = "visual-dairy-entries-v1";
 
-/** Newest first (by `createdAt` timestamp when the entry was added). */
-function sortByDateAdded(entries: JournalEntry[]): JournalEntry[] {
-  return [...entries].sort(
-    (a, b) => (Number(b.createdAt) || 0) - (Number(a.createdAt) || 0),
-  );
+/** Newest first (by parsed `dateLabel` when valid; otherwise by `createdAt`). */
+function sortEntries(entries: JournalEntry[]): JournalEntry[] {
+  return [...entries].sort((a, b) => {
+    const ad = parseMMDDYYYY(a.dateLabel);
+    const bd = parseMMDDYYYY(b.dateLabel);
+    if (ad !== null && bd !== null && ad !== bd) return bd - ad;
+    if (ad !== null && bd === null) return -1;
+    if (ad === null && bd !== null) return 1;
+    return (Number(b.createdAt) || 0) - (Number(a.createdAt) || 0);
+  });
 }
 
 function loadLocal(): JournalEntry[] {
@@ -18,7 +24,7 @@ function loadLocal(): JournalEntry[] {
     if (!raw) return [];
     const parsed = JSON.parse(raw) as unknown;
     if (!Array.isArray(parsed)) return [];
-    return sortByDateAdded(parsed as JournalEntry[]);
+    return sortEntries(parsed as JournalEntry[]);
   } catch {
     return [];
   }
@@ -135,7 +141,7 @@ export function useJournal(userId: string | null) {
         );
         setEntries([]);
       } else {
-        const rows = sortByDateAdded((data as DbRow[]).map(rowToEntry));
+        const rows = sortEntries((data as DbRow[]).map(rowToEntry));
         setEntries(rows);
         console.info(
           `[visual-dairy] Loaded ${rows.length} entr${rows.length === 1 ? "y" : "ies"} from Supabase`,
@@ -191,7 +197,7 @@ export function useJournal(userId: string | null) {
             JSON.stringify(processed.map((e) => e.blocks)) !==
             JSON.stringify(current.map((e) => e.blocks));
           if (changed) {
-            setEntries(sortByDateAdded(processed));
+            setEntries(sortEntries(processed));
           }
           const rows = processed.map((e) => entryToRow(e, userId));
           if (rows.length === 0) return;
@@ -231,7 +237,7 @@ export function useJournal(userId: string | null) {
       id: crypto.randomUUID(),
       createdAt: Date.now(),
     };
-    setEntries((prev) => sortByDateAdded([next, ...prev]));
+    setEntries((prev) => sortEntries([next, ...prev]));
   }, []);
 
   const removeEntry = useCallback(
@@ -252,7 +258,7 @@ export function useJournal(userId: string | null) {
   const updateEntry = useCallback(
     (id: string, patch: Partial<JournalEntry>) => {
       setEntries((prev) =>
-        sortByDateAdded(
+        sortEntries(
           prev.map((e) => (e.id === id ? { ...e, ...patch, id: e.id } : e)),
         ),
       );

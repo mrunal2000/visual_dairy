@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef } from "react";
 import type { EntryBlock, BlockKind } from "@/types";
 import { fileToCompressedDataUrl } from "@/imageCompress";
+import { formatDateLabelInput, normalizeMMDDYYYY, parseMMDDYYYY } from "@/dateLabel";
 import { Button } from "@/components/ui/button";
 import { DocumentIcon, ImageIcon, QuoteIcon } from "./Icons";
 
@@ -87,7 +88,7 @@ export function EntryComposer({ draft, onChange, onSave, layout }: Props) {
     draft.description.trim().length > 0 ||
     draft.blocks.some((b) => b.body.trim().length > 0);
 
-  const canSave = draft.dateLabel.trim().length > 0 && hasBody;
+  const canSave = parseMMDDYYYY(draft.dateLabel) !== null && hasBody;
 
   const shell =
     layout === "empty"
@@ -116,8 +117,18 @@ export function EntryComposer({ draft, onChange, onSave, layout }: Props) {
               <input
                 className="w-full bg-transparent text-right text-sm leading-[18px] tracking-[-0.02em] text-[#6B6B6B] outline-none placeholder:text-[#6B6B6B]"
                 value={draft.dateLabel}
-                onChange={(e) => set({ dateLabel: e.target.value })}
-                placeholder="Date"
+                onChange={(e) =>
+                  set({ dateLabel: formatDateLabelInput(e.target.value) })
+                }
+                onBlur={(e) => {
+                  const normalized = normalizeMMDDYYYY(e.target.value);
+                  if (normalized && normalized !== draft.dateLabel) {
+                    set({ dateLabel: normalized });
+                  }
+                }}
+                placeholder="MM/DD/YYYY"
+                inputMode="numeric"
+                pattern="\\d{2}/\\d{2}/\\d{4}"
                 aria-label="Date"
               />
             </label>

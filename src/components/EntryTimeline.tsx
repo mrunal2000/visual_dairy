@@ -1,6 +1,10 @@
 import type { ReactNode } from "react";
 import { useRef, useState } from "react";
 import { fileToCompressedDataUrl } from "@/imageCompress";
+import {
+  formatDateLabelInput,
+  normalizeMMDDYYYY,
+} from "@/dateLabel";
 import type { EntryBlock, JournalEntry } from "@/types";
 import { LinkifiedText } from "@/components/LinkifiedText";
 import { DocumentIcon, ImageIcon, QuoteIcon, TrashIcon } from "@/components/Icons";
@@ -59,9 +63,19 @@ function EntryListItem({
                 className="w-full bg-transparent text-right text-sm leading-[18px] tracking-[-0.02em] text-[#6B6B6B] outline-none placeholder:text-[#6B6B6B]"
                 value={entry.dateLabel}
                 onChange={(e) =>
-                  onUpdateEntry(entry.id, { dateLabel: e.target.value })
+                  onUpdateEntry(entry.id, {
+                    dateLabel: formatDateLabelInput(e.target.value),
+                  })
                 }
-                placeholder="Date"
+                onBlur={(e) => {
+                  const normalized = normalizeMMDDYYYY(e.target.value);
+                  if (normalized && normalized !== entry.dateLabel) {
+                    onUpdateEntry(entry.id, { dateLabel: normalized });
+                  }
+                }}
+                placeholder="MM/DD/YYYY"
+                inputMode="numeric"
+                pattern="\\d{2}/\\d{2}/\\d{4}"
                 aria-label="Date"
               />
             </label>
