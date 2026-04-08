@@ -464,16 +464,16 @@ function ImageRow({
       : "h-[161px] min-w-0 flex-1 basis-0";
 
   return (
-    <div className="flex h-[161px] min-h-[161px] w-full min-w-0 max-w-full items-start gap-[10px] self-stretch">
+    <div className="vd-img-row flex h-[161px] min-h-[161px] w-full min-w-0 max-w-full items-start gap-[10px] self-stretch">
       {images.map((img) => (
         <div
           key={img.id}
-          className={`relative min-w-0 overflow-hidden rounded-sm shadow-[0_0_4px_rgba(0,0,0,0.2)] ${tileClass}`}
+          className={`vd-img-zoomWrap relative z-0 min-w-0 overflow-hidden rounded-sm shadow-[0_0_4px_rgba(0,0,0,0.2)] ${tileClass} hover:z-[2]`}
         >
           <img
             src={img.body}
             alt=""
-            className="h-full w-full object-cover"
+            className="vd-img-zoom h-full w-full object-cover"
           />
           {editing && blockActions ? (
             <button

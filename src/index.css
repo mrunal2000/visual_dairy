@@ -40,3 +40,44 @@ body {
 #root {
   min-height: 100vh;
 }
+
+/* Image hover zoom (10%) */
+.vd-img-zoomWrap {
+  transform: scale(1);
+  transition: transform 150ms ease;
+  will-change: transform;
+  transform-origin: center;
+}
+
+.vd-img-zoom {
+  transform: scale(1);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .vd-img-zoomWrap:hover {
+    transform: scale(1.1);
+  }
+
+  /* When a tile in a row is hovered, fade its siblings a bit. */
+  .vd-img-row:hover .vd-img-zoomWrap:not(:hover) {
+    opacity: 0.72;
+  }
+  .vd-img-row .vd-img-zoomWrap {
+    transition:
+      transform 150ms ease,
+      opacity 150ms ease;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vd-img-zoomWrap {
+    transition: none;
+    will-change: auto;
+  }
+  .vd-img-zoomWrap:hover {
+    transform: scale(1);
+  }
+  .vd-img-row:hover .vd-img-zoomWrap:not(:hover) {
+    opacity: 1;
+  }
+}
