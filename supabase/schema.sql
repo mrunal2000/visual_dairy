@@ -3,6 +3,10 @@
 -- 1) Run the "Journal table + RLS" section below in SQL Editor.
 -- 2) Storage → New bucket → Name: journal-images → Public bucket ON → Create.
 -- 3) Run the "Storage policies" section at the bottom.
+--
+-- Public read / owner write: replace the UUID in journal_select_public_owner with your
+-- auth user id and set the same value as VITE_JOURNAL_PUBLIC_USER_ID in the app.
+-- INSERT/UPDATE/DELETE stay restricted to auth.uid() = user_id (RLS below).
 
 -- ========== Journal table + RLS ==========
 
@@ -27,13 +31,23 @@ create index if not exists journal_entries_user_created
 alter table public.journal_entries enable row level security;
 
 drop policy if exists "journal_select_own" on public.journal_entries;
+drop policy if exists "journal_select_public_owner" on public.journal_entries;
 drop policy if exists "journal_insert_own" on public.journal_entries;
 drop policy if exists "journal_update_own" on public.journal_entries;
 drop policy if exists "journal_delete_own" on public.journal_entries;
 
+-- Signed-in users can read their own rows.
 create policy "journal_select_own"
   on public.journal_entries for select
   using (auth.uid() = user_id);
+
+-- Anonymous (and everyone) can read the public journal owner's rows.
+-- Replace the UUID with your auth user id (same value as VITE_JOURNAL_PUBLIC_USER_ID).
+create policy "journal_select_public_owner"
+  on public.journal_entries for select
+  using (
+    user_id = '00000000-0000-0000-0000-000000000000'::uuid
+  );
 
 create policy "journal_insert_own"
   on public.journal_entries for insert
@@ -51,6 +65,7 @@ create policy "journal_delete_own"
 -- Safe to re-run: drops existing policies first.
 
 drop policy if exists "journal_images_insert_own" on storage.objects;
+drop policy if exists "journal_images_select_public" on storage.objects;
 drop policy if exists "journal_images_select_own" on storage.objects;
 drop policy if exists "journal_images_update_own" on storage.objects;
 drop policy if exists "journal_images_delete_own" on storage.objects;
@@ -61,6 +76,11 @@ create policy "journal_images_insert_own"
     bucket_id = 'journal-images'
     and (storage.foldername(name))[1] = auth.uid()::text
   );
+
+-- Public URLs for journal images work for visitors (bucket should be "Public" in dashboard).
+create policy "journal_images_select_public"
+  on storage.objects for select
+  using (bucket_id = 'journal-images');
 
 create policy "journal_images_select_own"
   on storage.objects for select

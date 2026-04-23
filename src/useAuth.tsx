@@ -34,18 +34,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    supabase.auth
-      .getSession()
-      .then(({ data: { session } }) => {
-        setUser(session?.user ?? null);
-      })
-      .finally(() => setLoading(false));
-
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
     });
+
+    void (async () => {
+      try {
+        const {
+          data: { session },
+          error,
+        } = await supabase.auth.getSession();
+        if (error) {
+          console.warn("[visual-dairy] Auth getSession error:", error.message);
+          await supabase.auth.signOut({ scope: "local" });
+          setUser(null);
+          return;
+        }
+        setUser(session?.user ?? null);
+      } catch (e) {
+        console.warn(
+          "[visual-dairy] Could not reach Supabase Auth (wrong VITE_SUPABASE_URL, offline, or DNS). Clearing stored session so the app can still load in public read-only mode.",
+          e,
+        );
+        try {
+          await supabase.auth.signOut({ scope: "local" });
+        } catch {
+          /* ignore */
+        }
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
+    })();
 
     return () => subscription.unsubscribe();
   }, []);
@@ -73,7 +95,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = useCallback(async () => {
     const supabase = getSupabase();
     if (!supabase) return;
-    await supabase.auth.signOut();
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {
+      console.warn(
+        "[visual-dairy] Remote sign-out failed (network). Clearing local session.",
+        e,
+      );
+      await supabase.auth.signOut({ scope: "local" });
+    }
   }, []);
 
   const value = useMemo(

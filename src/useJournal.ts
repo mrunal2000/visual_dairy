@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getSupabase, isSupabaseConfigured } from "@/lib/supabase";
+import {
+  canWriteJournal,
+  getPublicJournalUserId,
+  getSupabase,
+  isSupabaseConfigured,
+} from "@/lib/supabase";
 import { processAllEntries } from "@/lib/uploadJournalImages";
 import { parseMMDDYYYY } from "@/dateLabel";
 import type { JournalEntry } from "./types";
@@ -87,7 +92,9 @@ function entryToRow(entry: JournalEntry, userId: string): DbRow {
 export function useJournal(userId: string | null) {
   const cloud = isSupabaseConfigured();
   const supabase = getSupabase();
-  const remote = Boolean(cloud && userId && supabase);
+  const publicOwnerId = getPublicJournalUserId();
+  const mayWrite = canWriteJournal(cloud, userId, publicOwnerId);
+  const remote = Boolean(cloud && userId && supabase && mayWrite);
 
   const [entries, setEntries] = useState<JournalEntry[]>(() =>
     cloud ? [] : loadLocal(),
@@ -107,7 +114,7 @@ export function useJournal(userId: string | null) {
     );
   }, [cloud]);
 
-  // Load: cloud + user → Supabase; no cloud → localStorage; cloud + no user → empty
+  // Load: signed-in → own rows; signed-out → public owner rows (if configured); else empty; local → localStorage
   useEffect(() => {
     if (!cloud) {
       setEntries(loadLocal());
@@ -115,7 +122,14 @@ export function useJournal(userId: string | null) {
       return;
     }
 
-    if (!userId || !supabase) {
+    if (!supabase) {
+      setEntries([]);
+      setRemoteReady(true);
+      return;
+    }
+
+    const readUserId = userId ?? publicOwnerId;
+    if (!readUserId) {
       setEntries([]);
       setRemoteReady(true);
       return;
@@ -128,7 +142,7 @@ export function useJournal(userId: string | null) {
       const { data, error } = await supabase
         .from("journal_entries")
         .select("*")
-        .eq("user_id", userId)
+        .eq("user_id", readUserId)
         .order("created_at", { ascending: false });
 
       if (cancelled) return;
@@ -153,7 +167,7 @@ export function useJournal(userId: string | null) {
     return () => {
       cancelled = true;
     };
-  }, [cloud, userId, supabase]);
+  }, [cloud, userId, supabase, publicOwnerId]);
 
   // Persist locally when not using remote DB
   useEffect(() => {
@@ -174,6 +188,14 @@ export function useJournal(userId: string | null) {
             );
           } else if (!userId) {
             console.warn("[visual-dairy] Not syncing: not signed in.");
+          } else if (
+            publicOwnerId &&
+            userId &&
+            userId !== publicOwnerId
+          ) {
+            console.info(
+              "[visual-dairy] Not syncing: only the public journal owner can write.",
+            );
           } else if (!remoteReady) {
             console.info(
               "[visual-dairy] Not syncing yet: still loading your data from Supabase…",
@@ -229,19 +251,24 @@ export function useJournal(userId: string | null) {
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
     };
-  }, [entries, remote, remoteReady, supabase, userId, cloud]);
+  }, [entries, remote, remoteReady, supabase, userId, cloud, publicOwnerId]);
 
-  const addEntry = useCallback((entry: Omit<JournalEntry, "id" | "createdAt">) => {
-    const next: JournalEntry = {
-      ...entry,
-      id: crypto.randomUUID(),
-      createdAt: Date.now(),
-    };
-    setEntries((prev) => sortEntries([next, ...prev]));
-  }, []);
+  const addEntry = useCallback(
+    (entry: Omit<JournalEntry, "id" | "createdAt">) => {
+      if (!mayWrite) return;
+      const next: JournalEntry = {
+        ...entry,
+        id: crypto.randomUUID(),
+        createdAt: Date.now(),
+      };
+      setEntries((prev) => sortEntries([next, ...prev]));
+    },
+    [mayWrite],
+  );
 
   const removeEntry = useCallback(
     async (id: string) => {
+      if (!mayWrite) return;
       setEntries((prev) => prev.filter((e) => e.id !== id));
       if (remote && supabase && userId) {
         const { error } = await supabase
@@ -252,23 +279,24 @@ export function useJournal(userId: string | null) {
         if (error) console.error("[visual-dairy] Delete failed", error);
       }
     },
-    [remote, supabase, userId],
+    [mayWrite, remote, supabase, userId],
   );
 
   const updateEntry = useCallback(
     (id: string, patch: Partial<JournalEntry>) => {
+      if (!mayWrite) return;
       setEntries((prev) =>
         sortEntries(
           prev.map((e) => (e.id === id ? { ...e, ...patch, id: e.id } : e)),
         ),
       );
     },
-    [],
+    [mayWrite],
   );
 
   return {
     entries,
-    remoteLoading: remote && !remoteReady,
+    remoteLoading: cloud && !remoteReady,
     addEntry,
     removeEntry,
     updateEntry,

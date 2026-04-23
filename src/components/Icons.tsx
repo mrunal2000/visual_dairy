@@ -63,6 +63,25 @@ export function TrashIcon({ className }: { className?: string }) {
   );
 }
 
+export function MusicIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      width="15"
+      height="15"
+      viewBox="0 0 15 15"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden
+    >
+      <path
+        d="M11.5 1.75V9.45C11.5 10.55 10.6 11.45 9.5 11.45C8.4 11.45 7.5 10.55 7.5 9.45C7.5 8.35 8.4 7.45 9.5 7.45C9.95 7.45 10.35 7.6 10.65 7.85V3.55L5.5 4.65V11.25C5.5 12.35 4.6 13.25 3.5 13.25C2.4 13.25 1.5 12.35 1.5 11.25C1.5 10.15 2.4 9.25 3.5 9.25C3.95 9.25 4.35 9.4 4.65 9.65V4.1C4.65 3.75 4.9 3.45 5.25 3.38L10.9 2.18C11.22 2.11 11.5 2.36 11.5 2.68V1.75Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
 export function DocumentIcon({ className }: { className?: string }) {
   return (
     <svg

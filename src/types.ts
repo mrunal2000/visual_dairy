@@ -1,4 +1,4 @@
-export type BlockKind = "quote" | "image" | "text";
+export type BlockKind = "quote" | "image" | "text" | "music";
 
 export interface EntryBlock {
   id: string;

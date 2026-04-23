@@ -7,8 +7,16 @@ import {
 } from "@/dateLabel";
 import type { EntryBlock, JournalEntry } from "@/types";
 import { LinkifiedText } from "@/components/LinkifiedText";
+import { CurrentlyListeningBlock } from "@/components/CurrentlyListeningBlock";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { DocumentIcon, ImageIcon, QuoteIcon, TrashIcon } from "@/components/Icons";
+import { musicPayloadHasContent, defaultMusicBody } from "@/musicBlock";
+import {
+  DocumentIcon,
+  ImageIcon,
+  MusicIcon,
+  QuoteIcon,
+  TrashIcon,
+} from "@/components/Icons";
 
 type Props = {
   entries: JournalEntry[];
@@ -19,10 +27,17 @@ type Props = {
       Pick<JournalEntry, "dateLabel" | "title" | "description" | "blocks">
     >,
   ) => void;
+  /** When true, entries are view-only (no edit, delete, or block toolbar). */
+  readOnly?: boolean;
 };
 
 /** Matches Paper `visual_dairy_1`: 607px column, 87px date + 50px gap + 470px body, image rows, quote + rail. */
-export function EntryTimeline({ entries, onDelete, onUpdateEntry }: Props) {
+export function EntryTimeline({
+  entries,
+  onDelete,
+  onUpdateEntry,
+  readOnly = false,
+}: Props) {
   if (entries.length === 0) return null;
 
   return (
@@ -33,6 +48,7 @@ export function EntryTimeline({ entries, onDelete, onUpdateEntry }: Props) {
           <EntryListItem
             key={entry.id}
             entry={entry}
+            readOnly={readOnly}
             onDelete={onDelete}
             onUpdateEntry={onUpdateEntry}
           />
@@ -44,20 +60,23 @@ export function EntryTimeline({ entries, onDelete, onUpdateEntry }: Props) {
 
 function EntryListItem({
   entry,
+  readOnly,
   onDelete,
   onUpdateEntry,
 }: {
   entry: JournalEntry;
+  readOnly: boolean;
   onDelete: (id: string) => void;
   onUpdateEntry: Props["onUpdateEntry"];
 }) {
   const [editing, setEditing] = useState(false);
+  const effectiveEditing = readOnly ? false : editing;
 
   return (
     <li className="min-w-0 w-full">
       <article className="flex w-full min-w-0 flex-col items-start gap-3 sm:flex-row sm:items-start sm:gap-[50px]">
         <div className="w-full shrink-0 text-left text-sm leading-[18px] tracking-[-0.02em] text-[#6B6B6B] sm:w-[87px] sm:max-w-[87px] sm:text-right">
-          {editing ? (
+          {effectiveEditing ? (
             <label className="block">
               <span className="sr-only">Date</span>
               <input
@@ -87,7 +106,8 @@ function EntryListItem({
 
         <EntryArticleColumn
           entry={entry}
-          editing={editing}
+          readOnly={readOnly}
+          editing={effectiveEditing}
           setEditing={setEditing}
           onDelete={onDelete}
           onUpdateEntry={onUpdateEntry}
@@ -99,12 +119,14 @@ function EntryListItem({
 
 function EntryArticleColumn({
   entry,
+  readOnly,
   editing,
   setEditing,
   onDelete,
   onUpdateEntry,
 }: {
   entry: JournalEntry;
+  readOnly: boolean;
   editing: boolean;
   setEditing: (v: boolean) => void;
   onDelete: (id: string) => void;
@@ -238,6 +260,18 @@ function EntryArticleColumn({
                     ],
                   });
                 }
+                if (v === "music") {
+                  onUpdateEntry(entry.id, {
+                    blocks: [
+                      ...entry.blocks,
+                      {
+                        id: crypto.randomUUID(),
+                        kind: "music",
+                        body: defaultMusicBody(),
+                      },
+                    ],
+                  });
+                }
                 // Action buttons: reset state after performing action.
                 setToolbarValue("");
               }}
@@ -252,29 +286,38 @@ function EntryArticleColumn({
               <ToggleGroupItem value="note" aria-label="Add note" title="Add note">
                 <DocumentIcon />
               </ToggleGroupItem>
+              <ToggleGroupItem
+                value="music"
+                aria-label="Add currently listening"
+                title="Add currently listening"
+              >
+                <MusicIcon />
+              </ToggleGroupItem>
             </ToggleGroup>
           </div>
         ) : null}
 
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-          <button
-            type="button"
-            className="text-xs leading-[18px] tracking-[-0.02em] text-[#6B6B6B] underline decoration-[#6B6B6B]/30 underline-offset-[3px] transition hover:text-black hover:decoration-black/30"
-            aria-pressed={editing}
-            onClick={() => setEditing(!editing)}
-          >
-            {editing ? "Done" : "Edit"}
-          </button>
-          <button
-            type="button"
-            className="text-xs leading-[18px] tracking-[-0.02em] text-[#6B6B6B] underline decoration-[#6B6B6B]/30 underline-offset-[3px] transition hover:text-black hover:decoration-black/30"
-            onClick={() => {
-              if (confirm("Delete this entry?")) onDelete(entry.id);
-            }}
-          >
-            Delete
-          </button>
-        </div>
+        {!readOnly ? (
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <button
+              type="button"
+              className="text-xs leading-[18px] tracking-[-0.02em] text-[#6B6B6B] underline decoration-[#6B6B6B]/30 underline-offset-[3px] transition hover:text-black hover:decoration-black/30"
+              aria-pressed={editing}
+              onClick={() => setEditing(!editing)}
+            >
+              {editing ? "Done" : "Edit"}
+            </button>
+            <button
+              type="button"
+              className="text-xs leading-[18px] tracking-[-0.02em] text-[#6B6B6B] underline decoration-[#6B6B6B]/30 underline-offset-[3px] transition hover:text-black hover:decoration-black/30"
+              onClick={() => {
+                if (confirm("Delete this entry?")) onDelete(entry.id);
+              }}
+            >
+              Delete
+            </button>
+          </div>
+        ) : null}
       </div>
   );
 }
@@ -323,6 +366,14 @@ function walkEntryBlocks(
       i++;
       continue;
     }
+    if (
+      b.kind === "music" &&
+      !musicPayloadHasContent(b.body) &&
+      !(editing && blockActions)
+    ) {
+      i++;
+      continue;
+    }
 
     if (b.kind === "image" && b.body) {
       const group: EntryBlock[] = [];
@@ -360,6 +411,22 @@ function walkEntryBlocks(
     if (b.kind === "text" && (b.body || (editing && blockActions))) {
       nodes.push(
         <TextBlock
+          key={b.id}
+          block={b}
+          editing={editing}
+          blockActions={blockActions}
+        />,
+      );
+      i++;
+      continue;
+    }
+
+    if (
+      b.kind === "music" &&
+      (musicPayloadHasContent(b.body) || (editing && blockActions))
+    ) {
+      nodes.push(
+        <CurrentlyListeningBlock
           key={b.id}
           block={b}
           editing={editing}

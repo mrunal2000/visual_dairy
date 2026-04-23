@@ -1,5 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { EntryBlock, JournalEntry } from "@/types";
+import {
+  parseMusicBlockBody,
+  stringifyMusicPayload,
+} from "@/musicBlock";
 import { JOURNAL_IMAGES_BUCKET } from "@/lib/supabase";
 
 function dataUrlToBlob(dataUrl: string): Blob {
@@ -43,14 +47,30 @@ async function processBlocks(
 ): Promise<EntryBlock[]> {
   return Promise.all(
     blocks.map(async (b) => {
-      if (b.kind !== "image" || !b.body.startsWith("data:")) return b;
-      try {
-        const url = await uploadDataUrl(supabase, userId, b.body);
-        return { ...b, body: url };
-      } catch (e) {
-        console.error("[visual-dairy] Image upload failed", e);
-        return b;
+      if (b.kind === "image" && b.body.startsWith("data:")) {
+        try {
+          const url = await uploadDataUrl(supabase, userId, b.body);
+          return { ...b, body: url };
+        } catch (e) {
+          console.error("[visual-dairy] Image upload failed", e);
+          return b;
+        }
       }
+      if (b.kind === "music" && b.body) {
+        const p = parseMusicBlockBody(b.body);
+        if (!p.artworkUrl.startsWith("data:")) return b;
+        try {
+          const url = await uploadDataUrl(supabase, userId, p.artworkUrl);
+          return {
+            ...b,
+            body: stringifyMusicPayload({ ...p, artworkUrl: url }),
+          };
+        } catch (e) {
+          console.error("[visual-dairy] Artwork upload failed", e);
+          return b;
+        }
+      }
+      return b;
     }),
   );
 }

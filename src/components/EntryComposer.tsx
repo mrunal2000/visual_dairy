@@ -4,7 +4,9 @@ import { fileToCompressedDataUrl } from "@/imageCompress";
 import { formatDateLabelInput, normalizeMMDDYYYY, parseMMDDYYYY } from "@/dateLabel";
 import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { DocumentIcon, ImageIcon, QuoteIcon } from "./Icons";
+import { CurrentlyListeningBlock } from "@/components/CurrentlyListeningBlock";
+import { defaultMusicBody, musicPayloadHasContent } from "@/musicBlock";
+import { DocumentIcon, ImageIcon, MusicIcon, QuoteIcon } from "./Icons";
 
 export interface Draft {
   dateLabel: string;
@@ -22,7 +24,11 @@ type Props = {
 };
 
 function newBlock(kind: BlockKind): EntryBlock {
-  return { id: crypto.randomUUID(), kind, body: "" };
+  const id = crypto.randomUUID();
+  if (kind === "music") {
+    return { id, kind: "music", body: defaultMusicBody() };
+  }
+  return { id, kind, body: "" };
 }
 
 const DESCRIPTION_MIN_PX = 32;
@@ -88,7 +94,11 @@ export function EntryComposer({ draft, onChange, onSave, layout }: Props) {
   const hasBody =
     draft.title.trim().length > 0 ||
     draft.description.trim().length > 0 ||
-    draft.blocks.some((b) => b.body.trim().length > 0);
+    draft.blocks.some((b) =>
+      b.kind === "music"
+        ? musicPayloadHasContent(b.body)
+        : b.body.trim().length > 0,
+    );
 
   const canSave = parseMMDDYYYY(draft.dateLabel) !== null && hasBody;
 
@@ -195,6 +205,17 @@ export function EntryComposer({ draft, onChange, onSave, layout }: Props) {
                           </>
                         )}
                       </li>
+                    ) : b.kind === "music" ? (
+                      <li key={b.id} className="min-w-0 w-full max-w-full">
+                        <CurrentlyListeningBlock
+                          block={b}
+                          editing
+                          blockActions={{
+                            onUpdateBlock: updateBlock,
+                            onRemoveBlock: removeBlock,
+                          }}
+                        />
+                      </li>
                     ) : (
                       <li key={b.id} className="rounded-md border border-black/[0.06] bg-white/40 p-3">
                         <div className="mb-2 flex items-center justify-between gap-2">
@@ -243,6 +264,7 @@ export function EntryComposer({ draft, onChange, onSave, layout }: Props) {
                     if (v === "quote") addKind("quote");
                     if (v === "image") onPickImage();
                     if (v === "note") addKind("text");
+                    if (v === "music") addKind("music");
                     // These are action buttons, not persistent toggles.
                     setToolbarValue("");
                   }}
@@ -268,6 +290,13 @@ export function EntryComposer({ draft, onChange, onSave, layout }: Props) {
                     title="Add note"
                   >
                     <DocumentIcon />
+                  </ToggleGroupItem>
+                  <ToggleGroupItem
+                    value="music"
+                    aria-label="Add currently listening"
+                    title="Add currently listening"
+                  >
+                    <MusicIcon />
                   </ToggleGroupItem>
                 </ToggleGroup>
               </div>
