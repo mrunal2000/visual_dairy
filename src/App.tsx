@@ -24,7 +24,6 @@ export function App() {
   const { entries, remoteLoading, addEntry, removeEntry, updateEntry } =
     useJournal(user?.id ?? null);
   const [draft, setDraft] = useState<Draft>(emptyDraft);
-  const [authOpen, setAuthOpen] = useState(false);
 
   const publicOwnerId = getPublicJournalUserId();
   const hasEntries = entries.length > 0;
@@ -80,46 +79,20 @@ export function App() {
 
   return (
     <div className="min-h-screen bg-[#FCFBF7] text-black">
-      {cloudEnabled ? (
+      {cloudEnabled && user ? (
         <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-2 border-b border-black/[0.06] px-6 py-3">
-          {user ? (
-            <>
-              {publicOwnerId && user.id !== publicOwnerId ? (
-                <span className="text-xs leading-[18px] tracking-[-0.02em] text-[#6B6B6B]">
-                  Read-only with this account — only the journal owner can add or
-                  edit.
-                </span>
-              ) : null}
-              <button
-                type="button"
-                className="text-xs leading-[18px] tracking-[-0.02em] text-[#6B6B6B] underline decoration-[#6B6B6B]/30 underline-offset-[3px] hover:text-black"
-                onClick={() => void signOut()}
-              >
-                Sign out
-              </button>
-            </>
-          ) : (
-            <>
-              <span className="text-xs leading-[18px] tracking-[-0.02em] text-[#6B6B6B]">
-                Public view — no account needed. Sign in as the owner to add or
-                edit.
-              </span>
-              <button
-                type="button"
-                className="text-xs leading-[18px] tracking-[-0.02em] text-[#6B6B6B] underline decoration-[#6B6B6B]/30 underline-offset-[3px] hover:text-black"
-                aria-expanded={authOpen}
-                onClick={() => setAuthOpen((o) => !o)}
-              >
-                {authOpen ? "Close" : "Sign in"}
-              </button>
-            </>
-          )}
-        </div>
-      ) : null}
-
-      {authOpen && cloudEnabled && !user ? (
-        <div className="border-b border-black/[0.06] bg-[#FCFBF7] px-6 py-6">
-          <AuthPanel />
+          {publicOwnerId && user.id !== publicOwnerId ? (
+            <span className="text-xs leading-[18px] tracking-[-0.02em] text-[#6B6B6B]">
+              Read-only with this account — only the journal owner can add or edit.
+            </span>
+          ) : null}
+          <button
+            type="button"
+            className="text-xs leading-[18px] tracking-[-0.02em] text-[#6B6B6B] underline decoration-[#6B6B6B]/30 underline-offset-[3px] hover:text-black"
+            onClick={() => void signOut()}
+          >
+            Sign out
+          </button>
         </div>
       ) : null}
 
