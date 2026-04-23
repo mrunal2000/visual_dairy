@@ -61,10 +61,15 @@ export function App() {
         <h1 className="font-[family-name:var(--font-display)] text-lg leading-[22px] text-black">
           My Visual Journal
         </h1>
-        <p className="max-w-[360px] text-center text-sm leading-[18px] text-[#6B6B6B]">
-          Set <code className="text-[13px] text-black/80">VITE_JOURNAL_PUBLIC_USER_ID</code>{" "}
-          to your Supabase user UUID so visitors can read your journal without signing in,
-          or sign in below to use the app privately.
+        <p className="max-w-[400px] text-center text-sm leading-[18px] text-[#6B6B6B]">
+          To let anyone <strong className="font-medium text-black/80">view</strong> your
+          journal without an account, add your Supabase{" "}
+          <strong className="font-medium text-black/80">user id</strong> (Authentication →
+          Users → your user → User UID) as{" "}
+          <code className="text-[13px] text-black/80">VITE_JOURNAL_PUBLIC_USER_ID</code> in
+          your host env and run the matching policy in{" "}
+          <code className="text-[13px] text-black/80">supabase/schema.sql</code>. Otherwise
+          sign in below — only signed-in users can see anything.
         </p>
         <AuthPanel />
       </div>

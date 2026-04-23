@@ -46,7 +46,7 @@ create policy "journal_select_own"
 create policy "journal_select_public_owner"
   on public.journal_entries for select
   using (
-    user_id = '00000000-0000-0000-0000-000000000000'::uuid
+    user_id = '5281bc25-5f9b-4812-a9c5-853efd3ee8c4'::uuid
   );
 
 create policy "journal_insert_own"
