@@ -98,7 +98,7 @@ export function App() {
 
       {showJournal && !busy ? (
         <>
-          <div className="mx-auto flex w-full min-w-0 max-w-[607px] flex-col items-center gap-[59px] px-6 pb-10 pt-10">
+          <div className="mx-auto flex w-full min-w-0 max-w-[680px] flex-col items-center gap-[59px] px-6 pb-10 pt-10">
             <h1 className="font-[family-name:var(--font-display)] text-lg leading-[22px] text-black">
               My Visual Journal
             </h1>

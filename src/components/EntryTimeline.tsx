@@ -31,7 +31,7 @@ type Props = {
   readOnly?: boolean;
 };
 
-/** Matches Paper `visual_dairy_1`: 607px column, 87px date + 50px gap + 470px body, image rows, quote + rail. */
+/** Column ~680px: 87px date + 50px gap + ~543px body (wider than Paper 607/470). */
 export function EntryTimeline({
   entries,
   onDelete,
@@ -172,7 +172,7 @@ function EntryArticleColumn({
     : undefined;
 
   return (
-    <div className="relative flex min-w-0 flex-1 flex-col gap-4 [max-width:min(470px,100%)]">
+    <div className="relative flex min-w-0 flex-1 flex-col gap-4 [max-width:min(543px,100%)]">
         <div className="flex min-w-0 flex-col gap-1">
           {editing ? (
             <>
@@ -535,7 +535,7 @@ function ImageRow({
   if (images.length === 0) return null;
 
   /**
-   * Paper `visual_dairy_1`: body 470px; each tile 230×161 with gap 10px (two-up fills the row).
+   * Body column ~543px max; each tile 230×161 with gap 10px (two-up scales with row).
    * A single image uses the same tile width as one slot in a pair — not full column width.
    */
   const tileClass =

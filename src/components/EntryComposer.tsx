@@ -112,8 +112,8 @@ export function EntryComposer({ draft, onChange, onSave, layout }: Props) {
       <div
         className={
           layout === "empty"
-            ? "flex w-full max-w-[607px] flex-col items-center gap-[59px]"
-            : "mx-auto flex w-full max-w-[607px] flex-col gap-10"
+            ? "flex w-full max-w-[680px] flex-col items-center gap-[59px]"
+            : "mx-auto flex w-full max-w-[680px] flex-col gap-10"
         }
       >
         {layout === "empty" && (
