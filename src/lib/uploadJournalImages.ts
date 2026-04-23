@@ -19,18 +19,29 @@ function dataUrlToBlob(dataUrl: string): Blob {
   return new Blob([bytes], { type: mime });
 }
 
+function storageExtension(blob: Blob): string {
+  const t = blob.type || "";
+  if (t.includes("mpeg")) return "mp3";
+  if (t.includes("wav")) return "wav";
+  if (t.includes("ogg")) return "ogg";
+  if (t.includes("mp4") || t.includes("aac") || t.includes("m4a")) return "m4a";
+  if (t.includes("png")) return "png";
+  if (t.includes("jpeg") || t.includes("jpg")) return "jpg";
+  return "bin";
+}
+
 async function uploadDataUrl(
   supabase: SupabaseClient,
   userId: string,
   dataUrl: string,
 ): Promise<string> {
   const blob = dataUrlToBlob(dataUrl);
-  const ext = blob.type.includes("png") ? "png" : "jpg";
+  const ext = storageExtension(blob);
   const path = `${userId}/${crypto.randomUUID()}.${ext}`;
   const { error } = await supabase.storage
     .from(JOURNAL_IMAGES_BUCKET)
     .upload(path, blob, {
-      contentType: blob.type || "image/jpeg",
+      contentType: blob.type || "application/octet-stream",
       upsert: false,
     });
   if (error) throw error;
@@ -57,16 +68,25 @@ async function processBlocks(
         }
       }
       if (b.kind === "music" && b.body) {
-        const p = parseMusicBlockBody(b.body);
-        if (!p.artworkUrl.startsWith("data:")) return b;
+        let p = parseMusicBlockBody(b.body);
+        if (!p.artworkUrl.startsWith("data:") && !p.audioUrl.startsWith("data:"))
+          return b;
         try {
-          const url = await uploadDataUrl(supabase, userId, p.artworkUrl);
-          return {
-            ...b,
-            body: stringifyMusicPayload({ ...p, artworkUrl: url }),
-          };
+          if (p.artworkUrl.startsWith("data:")) {
+            p = {
+              ...p,
+              artworkUrl: await uploadDataUrl(supabase, userId, p.artworkUrl),
+            };
+          }
+          if (p.audioUrl.startsWith("data:")) {
+            p = {
+              ...p,
+              audioUrl: await uploadDataUrl(supabase, userId, p.audioUrl),
+            };
+          }
+          return { ...b, body: stringifyMusicPayload(p) };
         } catch (e) {
-          console.error("[visual-dairy] Artwork upload failed", e);
+          console.error("[visual-dairy] Music media upload failed", e);
           return b;
         }
       }

@@ -40,3 +40,8 @@ function readFileAsDataUrl(file: File): Promise<string> {
     reader.readAsDataURL(file);
   });
 }
+
+/** For audio (and other non-image) uploads — no re-encoding. */
+export function fileToRawDataUrl(file: File): Promise<string> {
+  return readFileAsDataUrl(file);
+}
